@@ -84,7 +84,7 @@ class PokemonBot:
             bot.send_message(chat_id, "У вас нет pokebol! Найдите или купите их, чтобы продолжить ловлю покемонов.")
             #на будущее: нужно придумать какое то продолжение для пользователя после этого сообщения
 
-            
+
 
 
     def show_go_buttons(self, chat_id):
@@ -124,12 +124,13 @@ class PokemonBot:
 
         # Отображение случайного покемона с весами
         chosen_pokemon = functions.pokemon_catch() #функция с вероятностями выпадения покемонов в файле functions.py
-        pokemon_image = f'image/{chosen_pokemon.lower()}.png'
+        pokemon_image = f'images/{chosen_pokemon.capitalize()}.webp'
         with open(pokemon_image, 'rb') as pokemon_photo:
             found_pokemon.append(chosen_pokemon)
-            sent_message = bot.send_photo(chat_id, pokemon_photo, caption=f"You found a {chosen_pokemon}! What would you like to do?\nYou have {pokebol_count} pokebols", reply_markup=markup)
+            sent_message = bot.send_document(chat_id, pokemon_photo)
+            bot.send_message(chat_id, f"You found a {chosen_pokemon}! What would you like to do?\nYou have {pokebol_count} pokebols",  reply_markup=markup)
             self.states[chat_id] = {'message_id': sent_message.message_id, 'state': 'choose_catch_or_skip'}
-            
+
             
 
     def show_captured_or_retry_buttons(self, chat_id, message_id):
@@ -152,11 +153,12 @@ class PokemonBot:
 
     def get_pokebols(self, user_id):
         can_get_pokebols = functions.check_pokebols_elegibility(user_id) #возвращает True or False
+        text = functions.time_until_next_midnight()
         if can_get_pokebols:
             functions.add_pokebols(user_id, 5)
-            bot.send_message(user_id, 'Вы получили 5 бесплатных покеболов')
+            bot.send_message(user_id, f'Вы получили 5 бесплатных покеболов. До следующего бесплатного получения осталось {text}')
         else:
-            bot.send_message(user_id, 'К сожалению вы еще не можете получить бесплатные покеболы. Дождитесь следующего дня')
+            bot.send_message(user_id, f'К сожалению вы еще не можете получить бесплатные покеболы. Дождитесь следующего дня. Осталось ждать: {text}')
 
     def run(self):
         # Запуск бота в режиме бесконечного опроса
@@ -184,7 +186,7 @@ if __name__ == "__main__":
 
     @bot.message_handler(commands=['help'])
     def help_command(message):
-            bot.send_message(message.chat.id, helpinfo, parse_mode='html')
+        bot.send_message(message.chat.id, helpinfo, parse_mode='html')
 
     @bot.message_handler(commands=['get_pokebols'])
     def get_pokebols(message):

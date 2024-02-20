@@ -1,19 +1,20 @@
 import random
 import sqlite3
 
-import time
-
+from datetime import datetime, timedelta
 misha_bot_api = '5629818025:AAE3CAZFs6uhMcWZodFUdpKhSJu5awmGK_o'
 poke_bot_api = "6831587612:AAEUQ4m30-Pajetdnw0AwZ4omaNmzVkc-4o"
 
+pokemon_list = ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Charmander', 'Charmeleon', 'Charizard', 'Squirtle', 'Wartortle', 'Blastoise', 'Caterpie', 'Metapod', 'Butterfree', 'Weedle', 'Kakuna', 'Beedrill', 'Pidgey', 'Pidgeotto', 'Pidgeot', 'Rattata', 'Raticate', 'Spearow', 'Fearow', 'Ekans', 'Arbok', 'Pikachu', 'Raichu', 'Sandshrew', 'Sandslash', 'NidoranF', 'Nidorina', 'Nidoqueen', 'NidoranM', 'Nidorino', 'Nidoking', 'Clefairy', 'Clefable', 'Vulpix', 'Ninetales', 'Jigglypuff', 'Wigglytuff', 'Zubat', 'Golbat', 'Oddish', 'Gloom', 'Vileplume', 'Paras', 'Parasect', 'Venonat', 'Venomoth', 'Diglett', 'Dugtrio', 'Meowth', 'Persian', 'Psyduck', 'Golduck', 'Mankey', 'Primeape', 'Growlithe', 'Arcanine', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Abra', 'Kadabra', 'Alakazam', 'Machop', 'Machoke', 'Machamp', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tentacool', 'Tentacruel', 'Geodude', 'Graveler', 'Golem', 'Ponyta', 'Rapidash', 'Slowpoke', 'Slowbro', 'Magnemite', 'Magneton', 'Farfetchd', 'Doduo', 'Dodrio', 'Seel', 'Dewgong', 'Grimer', 'Muk', 'Shellder', 'Cloyster', 'Gastly', 'Haunter', 'Gengar', 'Onix', 'Drowzee', 'Hypno', 'Krabby', 'Kingler', 'Voltorb', 'Electrode', 'Exeggcute', 'Exeggutor', 'Cubone', 'Marowak', 'Hitmonlee', 'Hitmonchan', 'Lickitung', 'Koffing', 'Weezing', 'Rhyhorn', 'Rhydon', 'Chansey', 'Tangela', 'Kangaskhan', 'Horsea', 'Seadra', 'Goldeen', 'Seaking', 'Staryu', 'Starmie', 'Mr_Mime', 'Scyther', 'Jynx', 'Electabuzz', 'Magmar', 'Pinsir', 'Tauros', 'Magikarp', 'Gyarados', 'Lapras', 'Ditto', 'Eevee', 'Vaporeon', 'Jolteon', 'Flareon', 'Porygon', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Aerodactyl', 'Snorlax', 'Articuno', 'Zapdos', 'Moltres', 'Dratini', 'Dragonair', 'Dragonite', 'Mewtwo', 'Mew']
 
 def pokemon_catch():  # возвращает рандомное имя покемона в зависимости от их вероятности выпадения
-    dictio = {'0': ['Хуйлуша'],  # key - веротность выпаения покемона, value -  list с именами покемонов
-              '10': ['Pikachu'],
-              '0': ['Лох'],        # вероятности должны в сумме давать 100
-              '40': ['Squirtle', 'Bulbasaur'],
-              '50': ['Charmander'], }
-    rand_num = random.randint(1, 100)
+    dictio = {'1': pokemon_list,  # key - веротность выпаения покемона, value -  list с именами покемонов
+              '19': pokemon_list,
+              '30': pokemon_list,        # вероятности должны быть написаны целыми числами
+              '120': pokemon_list,
+              '230': pokemon_list,
+              '600': pokemon_list }
+    rand_num = random.randint(1, 1000) # вероятности должны в сумме давать 1000
     counter = 0
     for key in dictio:
         counter += int(key)
@@ -54,10 +55,10 @@ def create_captured_pokemons_table():
 def create_number_of_pokemons(): #таблица для учета количества покемонов у каждого юзера
     conn = sqlite3.connect('pokedex.sql')
     cur = conn.cursor()
-    pokemon_list = ['pikachu', 'squirtle', 'bulbasaur', 'charmander'] #создает таблицу с покемонами из этого листа
+
     text = "CREATE TABLE IF NOT EXISTS number_of_pokemons (user_id INTEGER, last_access_date VARCHAR(12) DEFAULT '10/12/15', pokebols INTEGER DEFAULT 5, "
-    for item in pokemon_list:
-        text += f'{item} INTEGER DEFAULT 0,'
+    for item in pokemon_list:     #создаем таблицу с покемонами из этого листа, который был идентифицирован ранее
+        text += f'{item.lower()} INTEGER DEFAULT 0,'
     text = text.rstrip(',') + ")"
     cur.execute(text)
     conn.commit()
@@ -112,13 +113,19 @@ def show_pokedex(user_id): #показывает количество всех �
     cur = conn.cursor()
     cur.execute(f'SELECT * FROM number_of_pokemons WHERE user_id = {user_id}')
     pokemons = cur.fetchone()
-    text = f"""You have:
-Pokebols: {pokemons[2]}
-Pikachu: {pokemons[3]}
-Squirtle: {pokemons[4]}
-Bulbasaur: {pokemons[5]}
-Charmander: {pokemons[6]}
-"""
+    text = f'You have:\nPokebols: {pokemons[2]}\n'
+    print(pokemons[3:])
+    for poke_count, pokemon_name in zip(pokemons[3:], pokemon_list):
+        if poke_count > 0:
+            text += f'{pokemon_name}: {poke_count}\n'
+
+#     text = f"""You have:
+# Pokebols: {pokemons[2]}
+# Pikachu: {pokemons[3]}
+# Squirtle: {pokemons[4]}
+# Bulbasaur: {pokemons[5]}
+# Charmander: {pokemons[6]}
+# """
     cur.close()
     conn.close()
     return text
@@ -146,7 +153,8 @@ def check_pokebols_elegibility(user_id):
     cur = conn.cursor()
     cur.execute(f'SELECT last_access_date from number_of_pokemons where user_id ={user_id}')
     date = cur.fetchone()[0]
-    current_date = time.strftime("%d/%m/%y")
+    now = datetime.now()
+    current_date = now.strftime("%d/%m/%y")
     if date == current_date:
         can_get_pokemons = False
     else:
@@ -157,11 +165,24 @@ def check_pokebols_elegibility(user_id):
     conn.close()
     return can_get_pokemons
 
+def time_until_next_midnight():
+    current_time = datetime.now()
+
+    next_midnight = datetime(current_time.year, current_time.month, current_time.day) + timedelta(days=1)
+    time_remaining = next_midnight - current_time
+
+    hours, remainder = divmod(time_remaining.seconds, 3600)
+    minutes = remainder // 60
+    text = f'{hours} часов, {minutes+1} минут'
+
+    return text
+
 
 if __name__ == "__main__":
-    add_pokebols(668210174, 5)
-
     print(show_pokedex(668210174))
+    print(time_until_next_midnight())
+
+
 
 
 
