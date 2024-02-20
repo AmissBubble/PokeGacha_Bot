@@ -9,7 +9,6 @@ def pokemon_catch():  # возвращает рандомное имя поке�
               '40': ['Squirtle', 'Bulbasaur'],
               '50': ['Charmander'], }
     rand_num = random.randint(1, 100)
-    print(rand_num)
     counter = 0
     for key in dictio:
         counter += int(key)
