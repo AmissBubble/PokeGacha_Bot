@@ -2,9 +2,10 @@ import telebot
 from telebot import types
 import random
 import functions
+import sqlite3
 
 # Загрузка токена из переменных окружения
-bot = telebot.TeleBot(functions.poke_bot_api)
+bot = telebot.TeleBot(functions.misha_bot_api)
 
 found_pokemon = []
 
@@ -14,8 +15,10 @@ helpinfo = """
 /start - Начать поиск покемона
 /go - идти
 /help - Вывести это сообщение справки
-/pokedex - Показать Покемонов
+/pokedex - Показать Всех Покемонов
+/my_pokemons - Показать моих покемонов
 /get_pokebols - получить 5 бесплатных покемонов за ежедневный вход 
+
 
 <b>Дополнительные команды:</b>
 /help - Вывести это сообщение справки
@@ -35,21 +38,20 @@ class PokemonBot:
     def __init__(self):
         # Словарь для хранения состояний пользователей
         self.states = {}
+        self.generator = None
         # Создаем таблицу для спойманных покемонов
-        functions.create_captured_pokemons_table()
-        functions.create_number_of_pokemons()
-
+        functions.create_all_tables()
 
     def start(self, message):
 
-        functions.create_users_table()
         functions.add_user_to_number_of_pokemons(message.chat.id) #добавляет только новых юзеров
         # Приветственное сообщение при старте
         bot.send_message(message.chat.id, f"Hi, {message.from_user.first_name}!\nWelcome to Poké-Hunter. This bot allows you to search and catch Pokémons.\nPress /go to start your adventure.\nPress /help for more information.")
 
 
     def handle_go_callback(self, call):
-        chat_id = call.message.chat.id  # Для простоты предполагаем, что user_id и chat_id идентичны
+        chat_id = call.message.chat.id # Для простоты предполагаем, что user_id и chat_id идентичны
+
         pokebol_count = functions.pokebols_number(chat_id)
 
         if pokebol_count > 0:
@@ -106,12 +108,19 @@ class PokemonBot:
 
 
     def show_pokedex(self, chat_id):
-        pokedex = functions.show_pokedex(chat_id)
+        self.generator = functions.show_pokedex(chat_id)
+        markup = types.InlineKeyboardMarkup()
+        next_list = types.InlineKeyboardButton('Next', callback_data='next')
+        markup.add(next_list)
+        bot.send_message(chat_id, next(self.generator), reply_markup=markup)
+
+    def my_pokemons(self, chat_id):
+        pokemons = functions.my_pokemons(chat_id)
         # Проверка на пустую строку 'pokedex' перед отправкой
-        if pokedex.strip() == '':
+        if pokemons.strip() == '':
             bot.send_message(chat_id, "No Pokemons have been captured yet.")
         else:
-            bot.send_message(chat_id, pokedex)
+            bot.send_message(chat_id, pokemons)
 
 
 
@@ -121,6 +130,7 @@ class PokemonBot:
         button_catch = types.InlineKeyboardButton('Try to Catch', callback_data='catch')
         button_skip = types.InlineKeyboardButton('Skip', callback_data='skip')
         markup.add(button_catch, button_skip)
+
 
         # Отображение случайного покемона с весами
         chosen_pokemon, gen = functions.pokemon_catch() #функция с вероятностями выпадения покемонов в файле functions.py
@@ -154,14 +164,16 @@ class PokemonBot:
         #bot.delete_message(chat_id, message_id)
 
     def get_pokebols(self, user_id):
-        can_get_pokebols = functions.check_pokebols_elegibility(user_id) #возвращает True or False
+        conn = sqlite3.connect('pokedex.sql')
+        cur = conn.cursor()
+        can_get_pokebols = functions.check_pokebols_elegibility(user_id,conn, cur) #возвращает True or False
         text = functions.time_until_next_midnight()
         if can_get_pokebols:
-            functions.add_pokebols(user_id, 5)
+            functions.add_pokebols(user_id, 5, conn,cur)
             bot.send_message(user_id, f'Вы получили 5 бесплатных покеболов. До следующего бесплатного получения осталось {text}')
         else:
             bot.send_message(user_id, f'К сожалению вы еще не можете получить бесплатные покеболы. Дождитесь следующего дня. Осталось ждать: {text}')
-
+        conn.close()
     def run(self):
         # Запуск бота в режиме бесконечного опроса
         bot.infinity_polling()
@@ -193,6 +205,21 @@ if __name__ == "__main__":
     @bot.message_handler(commands=['get_pokebols'])
     def get_pokebols(message):
         pokemon_bot.get_pokebols(message.chat.id)
+
+    @bot.message_handler(commands=['my_pokemons'])
+    def get_pokebols(message):
+        pokemon_bot.my_pokemons(message.chat.id)
+
+
+    @bot.callback_query_handler(func=lambda call: call.data == "next")
+    def scroll_to_next(call):
+        markup = types.InlineKeyboardMarkup()
+        next_list = types.InlineKeyboardButton('Next', callback_data='next')
+        markup.add(next_list)
+        try:
+            bot.edit_message_text(next(pokemon_bot.generator), call.message.chat.id, call.message.message_id, reply_markup=markup)
+        except TypeError:
+            bot.edit_message_text('This Pokedex is not valid anymore, press /pokedex to get up-to-date version', call.message.chat.id, call.message.message_id)
 
     @bot.callback_query_handler(func=lambda call: call.data in ['go', 'keepgoing', 'skip', 'retry', 'catch'])
     def handle_go_callback_wrapper(call):
